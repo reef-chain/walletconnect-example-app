@@ -14,6 +14,7 @@ import {
 } from "../helpers";
 import { fonts } from "../styles";
 import { CHAINS } from "../helpers/config";
+import { checkFlipperValue } from "../contexts/JsonRpcContext";
 
 interface AccountStyleProps {
   rgb: string;
@@ -82,7 +83,7 @@ const SBlockchainChildrenContainer = styled(SFullWidthContainer)`
 interface BlockchainProps {
   fetching?: boolean;
   active?: boolean;
-  genesisHash: string;
+  reference: string;
   address?: string;
   onClick?: (chain: string) => void;
   balances?: AccountBalances;
@@ -94,7 +95,7 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
 ) => {
   const {
     fetching,
-    genesisHash,
+    reference,
     address,
     onClick,
     active,
@@ -102,7 +103,7 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
     actions,
   } = props;
 
-  const chain: ChainData = CHAINS[genesisHash];
+  const chain: ChainData = CHAINS[reference];
 
   if (typeof chain === "undefined") return null;
 
@@ -117,7 +118,7 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
     <React.Fragment>
       <SAccount
         rgb={chain.rgb}
-        onClick={() => onClick && onClick(props.genesisHash)}
+        onClick={() => onClick && onClick(props.reference)}
         className={active ? "active" : ""}
       >
         <SChain>
@@ -154,11 +155,12 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
                       key={action.method}
                       left
                       rgb={chain.rgb}
-                      onClick={() => action.callback(genesisHash, address)}
+                      onClick={() => action.callback(reference, address)}
                     >
                       {action.method}
                     </SAction>
                   ))}
+                  <button onClick={() => checkFlipperValue(reference)}>Get value</button>
                 </SFullWidthContainer>
               ) : null}
             </>

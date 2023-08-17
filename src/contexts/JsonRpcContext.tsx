@@ -4,10 +4,16 @@ import {
   CHAINS,
   DEFAULT_REEF_METHODS,
 } from "../helpers/config";
-import { ApiPromise, WsProvider } from '@polkadot/api'
+import { WsProvider } from '@polkadot/api'
 import { signatureVerify, cryptoWaitReady } from "@polkadot/util-crypto";
-import { Provider } from '@reef-defi/evm-provider';
+import { SignerPayload } from '@polkadot/types/interfaces';
+import { objectSpread } from '@polkadot/util';
+import { Provider, Signer } from '@reef-defi/evm-provider';
+import { handleTxResponse, toBN } from "@reef-defi/evm-provider/utils";
 import { FlipperAbi } from '../abi/Flipper';
+import { ethers } from "ethers";
+import { createSubmittable } from "@polkadot/api/submittable";
+import { SigningKey } from "ethers/lib/utils";
 
 /**
  * Types
@@ -28,6 +34,28 @@ interface IContext {
   };
   rpcResult?: IFormattedRpcResponse | null;
   isRpcRequestPending: boolean;
+}
+
+
+export const checkFlipperValue = async (reference: string) => {
+  const provider = new Provider({
+    provider: new WsProvider(CHAINS[reference].rpc[0]),
+  });
+  
+  const contract = new ethers.Contract(
+    CHAINS[reference].flipperContractAddress,
+    FlipperAbi, 
+    provider as any
+  );
+  
+  try {
+    await provider.api.isReadyOrError;
+    const result = await contract.get();
+    console.log('result:', result);
+  } catch (e) {
+    console.log('ERROR:', e);
+    throw e;
+  }
 }
 
 /**
@@ -80,77 +108,140 @@ export function JsonRpcContextProvider({
       }
     };
 
-  const buildPayload = async (genesisHash: string, address: string) => {
-    // const provider = new Provider({
-    //   provider: new WsProvider(CHAINS[chainId].rpc[0]),
-    // });
-    // const api = provider.api;
-    // try {
-    //   await api.isReadyOrError;
-    // } catch (e) {
-    //   console.log('Provider isReadyOrError ERROR=', e);
-    //   throw e;
-    // }
+  const buildPayload = async (reference: string, signerAddress: string) => {
+    const provider = new Provider({
+      provider: new WsProvider(CHAINS[reference].rpc[0]),
+    });
+    const api = provider.api;
 
-    const payload = {
-      specVersion: "0x00000005",
-      transactionVersion: "0x00000001",
-      address: address,
-      blockHash: "0x39e696f20c34f21408d36302a35cf4d3b1926237ed946e92c099101c5349be69",
-      blockNumber: "0x0012ec7e",
-      era: "0xe503",
-      genesisHash: genesisHash,
-      method: "0x1500b7bfae6567dedf3dc6dd498a527b2c4d88d3b9b910cde4efa900000000000000000000000000000000203602000000000000000000",
-      nonce: "0x0000005f",
-      signedExtensions: ['CheckSpecVersion', 'CheckTxVersion', 'CheckGenesis', 'CheckMortality', 'CheckNonce', 'CheckWeight', 'ChargeTransactionPayment', 'SetEvmOrigin'],
-      tip: "0x00000000000000000000000000000000",
-      version: 4,
-    };
+    const contract = new ethers.Contract(
+      CHAINS[reference].flipperContractAddress,
+      FlipperAbi, 
+      provider as any
+    );
 
-    return payload;
+    const tx = await contract.populateTransaction.flip();
+
+    try {
+      await api.isReadyOrError;
+
+      const lastHeader = await api.rpc.chain.getHeader();
+      const blockNumber = api.registry.createType('BlockNumber', lastHeader.number.toNumber());
+
+      const signerEvmAddress= await api.query.evmAccounts.evmAddresses(signerAddress);
+      if (signerEvmAddress.isEmpty) throw new Error(`No EVM address found for signer ${signerAddress}`);
+      tx.from = signerEvmAddress.toString();
+      const resources = await provider.estimateResources(tx);
+      const gasLimit = resources.gas.mul(31).div(10); // Multiply by 3.1
+      const storageLimit = resources.storage.mul(31).div(10); // Multiply by 3.1
+
+      const extrinsic = api.tx.evm.call(
+        tx.to,
+        tx.data,
+        toBN(tx.value),
+        toBN(gasLimit),
+        toBN(storageLimit.isNegative() ? 0 : storageLimit)
+      );
+      const method = api.createType('Call', extrinsic);
+
+      const era = api.registry.createType('ExtrinsicEra', {
+        current: lastHeader.number.toNumber(),
+        period: 64
+      });
+      const nonce = await api.rpc.system.accountNextIndex(signerAddress);
+      const tip = api.registry.createType('Compact<Balance>', 0).toHex();
+
+      const payload = {
+        specVersion: api.runtimeVersion.specVersion.toString(),
+        transactionVersion: api.runtimeVersion.transactionVersion.toHex(),
+        address: signerAddress,
+        blockHash: lastHeader.hash.toHex(),
+        blockNumber: blockNumber.toHex(),
+        era: era.toHex(),
+        genesisHash: api.genesisHash.toHex(),
+        method: method.toHex(),
+        nonce: nonce.toHex(),
+        signedExtensions: [
+          'CheckSpecVersion',
+          'CheckTxVersion',
+          'CheckGenesis',
+          'CheckMortality',
+          'CheckNonce',
+          'CheckWeight',
+          'ChargeTransactionPayment',
+          'SetEvmOrigin'
+        ],
+        tip: tip,
+        version: extrinsic.version
+      };
+
+      console.log('payload=', payload);
+      return { payload, extrinsic, provider };
+    } catch (e) {
+      console.log('ERROR:', e);
+      throw e;
+    }
   };
 
   const reefRpc = {
     testSignTransaction: _createJsonRpcRequestHandler(
       async (
-        genesisHash: string,
+        reference: string,
         address: string
       ): Promise<IFormattedRpcResponse> => {
-        const transactionPayload = await buildPayload(genesisHash, address);
+        const { payload, extrinsic, provider } = await buildPayload(reference, address);
 
-        const result = await client!.request<{
+        const signResult = await client!.request<{
           payload: string;
           signature: string;
         }>({
-          chainId: CHAINS[genesisHash].id,
+          chainId: CHAINS[reference].id,
           topic: session!.topic,
           request: {
             method: DEFAULT_REEF_METHODS.REEF_SIGN_TRANSACTION,
             params: {
               address,
-              transactionPayload,
+              transactionPayload: payload,
               abi: FlipperAbi
             },
           },
         });
 
+        extrinsic.addSignature(address, signResult.signature, payload);
+
+        const txResult = await new Promise((resolve, reject) => {
+          extrinsic.send((result) => {
+            handleTxResponse(result, provider.api)
+              .then(() => {
+                resolve(result);
+              })
+              .catch(({ message }) => {
+                reject(message);
+              });
+          }).catch((error) => {
+            reject(error && error.message);
+          });
+        });
+
+        console.log('txResult:', txResult);
+
         return {
           method: DEFAULT_REEF_METHODS.REEF_SIGN_TRANSACTION,
           address,
           valid: true,
-          result: result.signature,
+          result: signResult.signature,
         };
       }
     ),
     testSignMessage: _createJsonRpcRequestHandler(
       async (
-        genesisHash: string,
+        reference: string,
         address: string
       ): Promise<IFormattedRpcResponse> => {
         const message = `This is an example message to be signed - ${Date.now()}`;
 
-        const result = await client!.request<{ signature: string }>({
-          chainId: CHAINS[genesisHash].id,
+        const signResult = await client!.request<{ signature: string }>({
+          chainId: CHAINS[reference].id,
           topic: session!.topic,
           request: {
             method: DEFAULT_REEF_METHODS.REEF_SIGN_MESSAGE,
@@ -165,7 +256,7 @@ export function JsonRpcContextProvider({
         await cryptoWaitReady();
         const { isValid: valid } = signatureVerify(
           message,
-          result.signature,
+          signResult.signature,
           address
         );
 
@@ -173,7 +264,7 @@ export function JsonRpcContextProvider({
           method: DEFAULT_REEF_METHODS.REEF_SIGN_MESSAGE,
           address,
           valid,
-          result: result.signature,
+          result: signResult.signature,
         };
       }
     ),

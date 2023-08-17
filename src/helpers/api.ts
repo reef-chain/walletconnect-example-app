@@ -12,7 +12,7 @@ const api: AxiosInstance = axios.create({
 
 export async function apiGetAccountBalance(
   address: string,
-  genesisHash: string
+  reference: string
 ): Promise<AssetData> {
   // TODO get balance
   return { balance: "", symbol: "", name: "" };
@@ -40,7 +40,7 @@ export async function apiGetAccountBalance(
 
 export const apiGetAccountNonce = async (
   address: string,
-  genesisHash: string
+  reference: string
 ): Promise<number> => {
   // TODO get nonce
   return 0;
@@ -57,7 +57,7 @@ export const apiGetAccountNonce = async (
   // return nonce;
 };
 
-export const apiGetGasPrice = async (genesisHash: string): Promise<string> => {
+export const apiGetGasPrice = async (reference: string): Promise<string> => {
   // TODO get gas price ?
   return "0";
 

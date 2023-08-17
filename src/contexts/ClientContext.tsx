@@ -93,8 +93,8 @@ export function ClientContextProvider({
     try {
       const arr = await Promise.all(
         _accounts.map(async (account) => {
-          const [_namespace, genesisHash, address] = account.split(":");
-          const assets = await apiGetAccountBalance(address, genesisHash);
+          const [_namespace, reference, address] = account.split(":");
+          const assets = await apiGetAccountBalance(address, reference);
           return { account, assets: [assets] };
         })
       );

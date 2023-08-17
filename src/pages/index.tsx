@@ -25,7 +25,6 @@ import {
 } from "../components/app";
 import { useWalletConnectClient } from "../contexts/ClientContext";
 import { useJsonRpc } from "../contexts/JsonRpcContext";
-import { useChainData } from "../contexts/ChainDataContext";
 
 // Normal import does not work here
 const { version } = require("@walletconnect/sign-client/package.json");
@@ -97,13 +96,13 @@ const Home: NextPage = () => {
   }
 
   const getReefActions = (): AccountAction[] => {
-    const onSignTransaction = async (genesisHash: string, address: string) => {
+    const onSignTransaction = async (reference: string, address: string) => {
       openRequestModal();
-      await reefRpc.testSignTransaction(genesisHash, address);
+      await reefRpc.testSignTransaction(reference, address);
     };
-    const onSignMessage = async (genesisHash: string, address: string) => {
+    const onSignMessage = async (reference: string, address: string) => {
       openRequestModal();
-      await reefRpc.testSignMessage(genesisHash, address);
+      await reefRpc.testSignMessage(reference, address);
     };
     return [
       {
@@ -117,11 +116,11 @@ const Home: NextPage = () => {
     ];
   };
 
-  const handleChainSelectionClick = (genesisHash: string) => {
-    if (chains.includes(genesisHash)) {
-      setChains(chains.filter((chain) => chain !== genesisHash));
+  const handleChainSelectionClick = (reference: string) => {
+    if (chains.includes(reference)) {
+      setChains(chains.filter((chain) => chain !== reference));
     } else {
-      setChains([...chains, genesisHash]);
+      setChains([...chains, reference]);
     }
   };
 
@@ -149,12 +148,12 @@ const Home: NextPage = () => {
         <h6>{`Using v${version || "2.0.0-beta"}`}</h6>
         <SButtonContainer>
           <h6>Select chains:</h6>
-          {Object.keys(CHAINS).map((genesisHash) => (
+          {Object.keys(CHAINS).map((reference) => (
             <Blockchain
-              key={genesisHash}
-              genesisHash={genesisHash}
+              key={reference}
+              reference={reference}
               onClick={handleChainSelectionClick}
-              active={chains.includes(genesisHash)}
+              active={chains.includes(reference)}
             />
           ))}
           <SConnectButton left onClick={onConnect} disabled={!chains.length}>
@@ -171,14 +170,14 @@ const Home: NextPage = () => {
         <h3>Accounts</h3>
         <SAccounts>
           {accounts.map((account) => {
-            const [_namespace, genesisHash, address] = account.split(":");
+            const [_namespace, reference, address] = account.split(":");
             return (
               <Blockchain
                 key={account}
                 active={true}
                 fetching={isFetchingBalances}
                 address={address}
-                genesisHash={genesisHash}
+                reference={reference}
                 balances={balances}
                 actions={getReefActions()}
               />

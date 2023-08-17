@@ -4,21 +4,21 @@ import { apiGetAccountNonce, apiGetGasPrice } from "./api";
 import { CHAINS } from "./config";
 
 export async function formatTestTransaction(account: string) {
-  const [_namespace, genesisHash, address] = account.split(":");
+  const [_namespace, reference, address] = account.split(":");
 
   let _nonce;
   try {
-    _nonce = await apiGetAccountNonce(address, genesisHash);
+    _nonce = await apiGetAccountNonce(address, reference);
   } catch (error) {
     throw new Error(
-      `Failed to fetch nonce for address ${address} on chain ${CHAINS[genesisHash].name}`
+      `Failed to fetch nonce for address ${address} on chain ${CHAINS[reference].name}`
     );
   }
 
   const nonce = encoding.sanitizeHex(encoding.numberToHex(_nonce));
 
   // gasPrice
-  const _gasPrice = await apiGetGasPrice(genesisHash);
+  const _gasPrice = await apiGetGasPrice(reference);
   const gasPrice = encoding.sanitizeHex(_gasPrice);
 
   // gasLimit

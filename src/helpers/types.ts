@@ -6,17 +6,18 @@ export interface AssetData {
 }
 
 export interface ChainsMap {
-  [genesisHash: string]: ChainData;
+  [reference: string]: ChainData;
 }
 
 export interface ChainData {
   name: string;
   id: string;
+  genesisHash: string;
   rpc: string[];
-  slip44: number;
   testnet: boolean;
   logo: string;
   rgb: string;
+  flipperContractAddress: string;
 }
 
 export interface TxData {
@@ -144,7 +145,7 @@ export interface ChainMetadata {
 }
 
 export interface NamespaceMetadata {
-  [genesisHash: string]: ChainMetadata;
+  [reference: string]: ChainMetadata;
 }
 export interface ChainNamespaces {
   [namespace: string]: ChainsMap;
@@ -152,7 +153,7 @@ export interface ChainNamespaces {
 
 export interface AccountAction {
   method: string;
-  callback: (genesisHash: string, address: string) => Promise<void>;
+  callback: (reference: string, address: string) => Promise<void>;
 }
 
 export interface AccountBalances {
