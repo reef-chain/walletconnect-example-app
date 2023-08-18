@@ -1,17 +1,12 @@
 import type { NextPage } from "next";
 import React, { useEffect, useState } from "react";
-
 import Banner from "../components/Banner";
 import Blockchain from "../components/Blockchain";
 import Column from "../components/Column";
 import Dropdown from "../components/Dropdown";
 import Header from "../components/Header";
 import Modal from "../components/Modal";
-import {
-  DEFAULT_REEF_METHODS,
-  CHAINS,
-} from "../helpers/config";
-import { AccountAction } from "../helpers";
+import { AccountAction, initProviders, DEFAULT_REEF_METHODS } from "../helpers";
 import RequestModal from "../modals/RequestModal";
 import PairingModal from "../modals/PairingModal";
 import {
@@ -25,9 +20,6 @@ import {
 } from "../components/app";
 import { useWalletConnectClient } from "../contexts/ClientContext";
 import { useJsonRpc } from "../contexts/JsonRpcContext";
-
-// Normal import does not work here
-const { version } = require("@walletconnect/sign-client/package.json");
 
 const Home: NextPage = () => {
   const [modal, setModal] = useState("");
@@ -43,13 +35,9 @@ const Home: NextPage = () => {
     session,
     connect,
     disconnect,
-    chains,
     relayerRegion,
     accounts,
-    balances,
-    isFetchingBalances,
     isInitializing,
-    setChains,
     setRelayerRegion,
   } = useWalletConnectClient();
 
@@ -59,6 +47,11 @@ const Home: NextPage = () => {
     isRpcRequestPending,
     rpcResult,
   } = useJsonRpc();
+
+  // Initialize RPC providers.
+  useEffect(() => {
+    initProviders();
+  }, []);
 
   // Close the pairing modal after a session is established.
   useEffect(() => {
@@ -116,14 +109,6 @@ const Home: NextPage = () => {
     ];
   };
 
-  const handleChainSelectionClick = (reference: string) => {
-    if (chains.includes(reference)) {
-      setChains(chains.filter((chain) => chain !== reference));
-    } else {
-      setChains([...chains, reference]);
-    }
-  };
-
   // Renders the appropriate model for the given request that is currently in-flight.
   const renderModal = () => {
     switch (modal) {
@@ -142,21 +127,11 @@ const Home: NextPage = () => {
   };
 
   const renderContent = () => {
-    return !accounts.length && !Object.keys(balances).length ? (
+    return !accounts.length ? (
       <SLanding center>
         <Banner />
-        <h6>{`Using v${version || "2.0.0-beta"}`}</h6>
         <SButtonContainer>
-          <h6>Select chains:</h6>
-          {Object.keys(CHAINS).map((reference) => (
-            <Blockchain
-              key={reference}
-              reference={reference}
-              onClick={handleChainSelectionClick}
-              active={chains.includes(reference)}
-            />
-          ))}
-          <SConnectButton left onClick={onConnect} disabled={!chains.length}>
+          <SConnectButton left onClick={onConnect}>
             {"Connect"}
           </SConnectButton>
           <Dropdown
@@ -175,10 +150,8 @@ const Home: NextPage = () => {
               <Blockchain
                 key={account}
                 active={true}
-                fetching={isFetchingBalances}
                 address={address}
                 reference={reference}
-                balances={balances}
                 actions={getReefActions()}
               />
             );

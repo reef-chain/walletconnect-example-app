@@ -1,6 +1,6 @@
 import Head from "next/head";
 import * as React from "react";
-import { DEFAULT_APP_METADATA } from "../helpers/config";
+import { DEFAULT_APP_METADATA } from "../helpers";
 
 const Metadata = () => (
   <Head>

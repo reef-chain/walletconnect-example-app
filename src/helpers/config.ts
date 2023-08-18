@@ -8,21 +8,21 @@ export const CHAINS: ChainsMap = {
     id: "reef:7834781d38e4798d548e34ec947d19de",
     genesisHash: "0x7834781d38e4798d548e34ec947d19deea29df148a7bf32484b7b24dacf8d4b7",
     name: "Reef Mainnet",
-    rpc: ["wss://rpc.reefscan.info/ws"],
+    rpc: ["wss://rpc.reefscan.com/ws"],
     testnet: false,
     logo: "/assets/reef.jpg",
     rgb: "169, 49, 133",
-    flipperContractAddress: "",
+    flipperContractAddress: "0x776A169621d6c3d39800dFE22dE7E4779f9C8c40",
   },
   ["b414a8602b2251fa538d38a932239150"]: {
     id: "reef:b414a8602b2251fa538d38a932239150",
     name: "Reef Testnet (Scuba)",
     genesisHash: "0xb414a8602b2251fa538d38a9322391500bd0324bc7ac6048845d57c37dd83fe6",
-    rpc: ["wss://rpc-testnet.reefscan.info/ws"],
+    rpc: ["wss://rpc-testnet.reefscan.com/ws"],
     testnet: true,
     logo: "/assets/reef.jpg",
     rgb: "93, 59, 173",
-    flipperContractAddress: "0xb7bFaE6567dEDf3DC6Dd498A527B2c4d88d3B9b9" // "0x6252dc9516792de316694d863271bd25c07e621b"
+    flipperContractAddress: "0xb7bFaE6567dEDf3DC6Dd498A527B2c4d88d3B9b9"
   },
 };
 

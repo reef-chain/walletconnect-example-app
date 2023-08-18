@@ -3,21 +3,16 @@ import { useWalletConnectClient } from "./ClientContext";
 import {
   CHAINS,
   DEFAULT_REEF_METHODS,
-} from "../helpers/config";
-import { WsProvider } from '@polkadot/api'
+} from "../helpers";
 import { signatureVerify, cryptoWaitReady } from "@polkadot/util-crypto";
-import { SignerPayload } from '@polkadot/types/interfaces';
-import { objectSpread } from '@polkadot/util';
-import { Provider, Signer } from '@reef-defi/evm-provider';
-import { handleTxResponse, toBN } from "@reef-defi/evm-provider/utils";
+import { Provider } from '@reef-defi/evm-provider';
+import { dataToString, handleTxResponse, toBN } from "@reef-defi/evm-provider/utils";
 import { FlipperAbi } from '../abi/Flipper';
 import { ethers } from "ethers";
-import { createSubmittable } from "@polkadot/api/submittable";
-import { SigningKey } from "ethers/lib/utils";
+import type {
+  TransactionReceipt
+} from '@ethersproject/abstract-provider';
 
-/**
- * Types
- */
 interface IFormattedRpcResponse {
   method?: string;
   address?: string;
@@ -38,10 +33,9 @@ interface IContext {
 
 
 export const checkFlipperValue = async (reference: string) => {
-  const provider = new Provider({
-    provider: new WsProvider(CHAINS[reference].rpc[0]),
-  });
-  
+  const provider = CHAINS[reference].provider;
+  if (!provider) throw new Error(`No provider found for chain ${reference}`);
+
   const contract = new ethers.Contract(
     CHAINS[reference].flipperContractAddress,
     FlipperAbi, 
@@ -58,14 +52,8 @@ export const checkFlipperValue = async (reference: string) => {
   }
 }
 
-/**
- * Context
- */
 export const JsonRpcContext = createContext<IContext>({} as IContext);
 
-/**
- * Provider
- */
 export function JsonRpcContextProvider({
   children,
 }: {
@@ -108,12 +96,7 @@ export function JsonRpcContextProvider({
       }
     };
 
-  const buildPayload = async (reference: string, signerAddress: string) => {
-    const provider = new Provider({
-      provider: new WsProvider(CHAINS[reference].rpc[0]),
-    });
-    const api = provider.api;
-
+  const buildPayload = async (provider: Provider, reference: string, signerAddress: string) => {
     const contract = new ethers.Contract(
       CHAINS[reference].flipperContractAddress,
       FlipperAbi, 
@@ -123,42 +106,40 @@ export function JsonRpcContextProvider({
     const tx = await contract.populateTransaction.flip();
 
     try {
-      await api.isReadyOrError;
+      const lastHeader = await provider.api.rpc.chain.getHeader();
+      const blockNumber = provider.api.registry.createType('BlockNumber', lastHeader.number.toNumber());
 
-      const lastHeader = await api.rpc.chain.getHeader();
-      const blockNumber = api.registry.createType('BlockNumber', lastHeader.number.toNumber());
-
-      const signerEvmAddress= await api.query.evmAccounts.evmAddresses(signerAddress);
+      const signerEvmAddress= await provider.api.query.evmAccounts.evmAddresses(signerAddress);
       if (signerEvmAddress.isEmpty) throw new Error(`No EVM address found for signer ${signerAddress}`);
       tx.from = signerEvmAddress.toString();
       const resources = await provider.estimateResources(tx);
       const gasLimit = resources.gas.mul(31).div(10); // Multiply by 3.1
       const storageLimit = resources.storage.mul(31).div(10); // Multiply by 3.1
 
-      const extrinsic = api.tx.evm.call(
+      const extrinsic = provider.api.tx.evm.call(
         tx.to,
         tx.data,
         toBN(tx.value),
         toBN(gasLimit),
         toBN(storageLimit.isNegative() ? 0 : storageLimit)
       );
-      const method = api.createType('Call', extrinsic);
+      const method = provider.api.createType('Call', extrinsic);
 
-      const era = api.registry.createType('ExtrinsicEra', {
+      const era = provider.api.registry.createType('ExtrinsicEra', {
         current: lastHeader.number.toNumber(),
         period: 64
       });
-      const nonce = await api.rpc.system.accountNextIndex(signerAddress);
-      const tip = api.registry.createType('Compact<Balance>', 0).toHex();
+      const nonce = await provider.api.rpc.system.accountNextIndex(signerAddress);
+      const tip = provider.api.registry.createType('Compact<Balance>', 0).toHex();
 
       const payload = {
-        specVersion: api.runtimeVersion.specVersion.toString(),
-        transactionVersion: api.runtimeVersion.transactionVersion.toHex(),
+        specVersion: provider.api.runtimeVersion.specVersion.toString(),
+        transactionVersion: provider.api.runtimeVersion.transactionVersion.toHex(),
         address: signerAddress,
         blockHash: lastHeader.hash.toHex(),
         blockNumber: blockNumber.toHex(),
         era: era.toHex(),
-        genesisHash: api.genesisHash.toHex(),
+        genesisHash: provider.api.genesisHash.toHex(),
         method: method.toHex(),
         nonce: nonce.toHex(),
         signedExtensions: [
@@ -176,7 +157,7 @@ export function JsonRpcContextProvider({
       };
 
       console.log('payload=', payload);
-      return { payload, extrinsic, provider };
+      return { payload, extrinsic, tx };
     } catch (e) {
       console.log('ERROR:', e);
       throw e;
@@ -189,8 +170,12 @@ export function JsonRpcContextProvider({
         reference: string,
         address: string
       ): Promise<IFormattedRpcResponse> => {
-        const { payload, extrinsic, provider } = await buildPayload(reference, address);
+        const provider = CHAINS[reference].provider;
+        if (!provider) throw new Error(`No provider found for chain ${reference}`);
 
+        const { payload, extrinsic, tx } = await buildPayload(provider, reference, address);
+
+        let valid = false;
         const signResult = await client!.request<{
           payload: string;
           signature: string;
@@ -212,8 +197,26 @@ export function JsonRpcContextProvider({
         const txResult = await new Promise((resolve, reject) => {
           extrinsic.send((result) => {
             handleTxResponse(result, provider.api)
-              .then(() => {
-                resolve(result);
+            .then(() => {
+                valid = true;
+                resolve({
+                  hash: extrinsic.hash.toHex(),
+                  from: tx.from || '',
+                  confirmations: 0,
+                  nonce: (tx.nonce || 0).toString(),
+                  gasLimit: (tx.gasLimit || 0).toString(),
+                  gasPrice: '0',
+                  data: dataToString(tx.data!),
+                  value: (tx.value || 0).toString(),
+                  chainId: 13939,
+                  wait: (confirmations?: number): Promise<TransactionReceipt> => {
+                    return provider._resolveTransactionReceipt(
+                      extrinsic.hash.toHex(),
+                      result.status.asInBlock.toHex(),
+                      tx.from || '',
+                    );
+                  }
+                });
               })
               .catch(({ message }) => {
                 reject(message);
@@ -228,8 +231,8 @@ export function JsonRpcContextProvider({
         return {
           method: DEFAULT_REEF_METHODS.REEF_SIGN_TRANSACTION,
           address,
-          valid: true,
-          result: signResult.signature,
+          valid,
+          result: JSON.stringify(txResult),
         };
       }
     ),
@@ -252,7 +255,6 @@ export function JsonRpcContextProvider({
           },
         });
 
-        // sr25519 signatures need to wait for WASM to load
         await cryptoWaitReady();
         const { isValid: valid } = signatureVerify(
           message,

@@ -1,7 +1,6 @@
 import React, { PropsWithChildren, FC } from "react";
 import styled from "styled-components";
 
-import Asset from "./Asset";
 import Button from "./Button";
 import Column from "./Column";
 import Loader from "./Loader";
@@ -9,11 +8,10 @@ import Loader from "./Loader";
 import {
   AccountAction,
   ellipseAddress,
-  AccountBalances,
   ChainData,
+  CHAINS
 } from "../helpers";
 import { fonts } from "../styles";
-import { CHAINS } from "../helpers/config";
 import { checkFlipperValue } from "../contexts/JsonRpcContext";
 
 interface AccountStyleProps {
@@ -86,7 +84,6 @@ interface BlockchainProps {
   reference: string;
   address?: string;
   onClick?: (chain: string) => void;
-  balances?: AccountBalances;
   actions?: AccountAction[];
 }
 
@@ -99,7 +96,6 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
     address,
     onClick,
     active,
-    balances,
     actions,
   } = props;
 
@@ -108,12 +104,6 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
   if (typeof chain === "undefined") return null;
 
   const name = chain.name;
-  const account =
-    typeof address !== "undefined" ? `${chain.id}:${address}` : undefined;
-  const assets =
-    typeof account !== "undefined" && typeof balances !== "undefined"
-      ? balances[account]
-      : [];
   return (
     <React.Fragment>
       <SAccount
@@ -135,18 +125,6 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
             </Column>
           ) : (
             <>
-              {!!assets && assets.length ? (
-                <SFullWidthContainer>
-                  <h6>Balances</h6>
-                  <Column center>
-                    {assets.map((asset) =>
-                      asset.symbol ? (
-                        <Asset key={asset.symbol} asset={asset} />
-                      ) : null
-                    )}
-                  </Column>
-                </SFullWidthContainer>
-              ) : null}
               {address && !!actions && actions.length ? (
                 <SFullWidthContainer>
                   <h6>Methods</h6>
@@ -160,7 +138,14 @@ const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
                       {action.method}
                     </SAction>
                   ))}
-                  <button onClick={() => checkFlipperValue(reference)}>Get value</button>
+                  {/* <SAction
+                      key='get'
+                      left
+                      rgb={chain.rgb}
+                      onClick={() => checkFlipperValue(reference)}
+                    >
+                      Log flipper value
+                    </SAction> */}
                 </SFullWidthContainer>
               ) : null}
             </>

@@ -1,12 +1,8 @@
-# React dApp (with standalone v2 client)
-
-🔗 Live dapp demo - https://react-app.walletconnect.com/ <br />
-🔗 Live wallet demo - https://react-wallet.walletconnect.com/ <br />
-📚 WalletConnect v2 Docs - https://docs.walletconnect.com/2.0
+# WalletConnect Reef React dApp (with standalone v2 client)
 
 ## Overview
 
-This is an example implementation of a React dApp (generated via `create-react-app`) using the standalone
+This is an example implementation of a React dApp (generated via `create-react-app`) based on [react-dapp-v2](https://github.com/WalletConnect/web-examples/tree/main/dapps/react-dapp-v2) sample project, adapted to use Reef chain. It uses the standalone
 client for WalletConnect v2 to:
 
 - handle pairings

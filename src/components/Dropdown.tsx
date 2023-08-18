@@ -1,5 +1,5 @@
 import * as React from "react";
-import { REGIONALIZED_RELAYER_ENDPOINTS } from "../helpers/config";
+import { REGIONALIZED_RELAYER_ENDPOINTS } from "../helpers";
 import styled from "styled-components";
 import Icon from "./Icon";
 import { useState } from "react";

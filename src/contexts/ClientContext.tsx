@@ -15,51 +15,34 @@ import {
 
 import { getAppMetadata, getSdkError } from "@walletconnect/utils";
 import {
+  getRequiredNamespaces,
   DEFAULT_APP_METADATA,
   DEFAULT_LOGGER,
   DEFAULT_PROJECT_ID,
   DEFAULT_RELAY_URL,
-} from "../helpers/config";
-import { AccountBalances, apiGetAccountBalance } from "../helpers";
-import { getRequiredNamespaces } from "../helpers/namespaces";
+} from "../helpers";
 
 
-/**
- * Types
- */
 interface IContext {
   client: Client | undefined;
   session: SessionTypes.Struct | undefined;
   connect: (pairing?: { topic: string }) => Promise<void>;
   disconnect: () => Promise<void>;
   isInitializing: boolean;
-  chains: string[];
   relayerRegion: string;
   pairings: PairingTypes.Struct[];
   accounts: string[];
-  balances: AccountBalances;
-  isFetchingBalances: boolean;
-  setChains: any;
   setRelayerRegion: any;
 }
 
-/**
- * Context
- */
 export const ClientContext = createContext<IContext>({} as IContext);
 
-/**
- * Web3Modal Config
- */
 const web3Modal = new Web3Modal({
   projectId: DEFAULT_PROJECT_ID,
   themeMode: "light",
   walletConnectVersion: 2,
 });
 
-/**
- * Provider
- */
 export function ClientContextProvider({
   children,
 }: {
@@ -69,59 +52,26 @@ export function ClientContextProvider({
   const [pairings, setPairings] = useState<PairingTypes.Struct[]>([]);
   const [session, setSession] = useState<SessionTypes.Struct>();
 
-  const [isFetchingBalances, setIsFetchingBalances] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const prevRelayerValue = useRef<string>("");
 
-  const [balances, setBalances] = useState<AccountBalances>({});
   const [accounts, setAccounts] = useState<string[]>([]);
-  const [chains, setChains] = useState<string[]>([]);
   const [relayerRegion, setRelayerRegion] = useState<string>(
     DEFAULT_RELAY_URL!
   );
 
   const reset = () => {
     setSession(undefined);
-    setBalances({});
     setAccounts([]);
-    setChains([]);
     setRelayerRegion(DEFAULT_RELAY_URL!);
-  };
-
-  const getAccountBalances = async (_accounts: string[]) => {
-    setIsFetchingBalances(true);
-    try {
-      const arr = await Promise.all(
-        _accounts.map(async (account) => {
-          const [_namespace, reference, address] = account.split(":");
-          const assets = await apiGetAccountBalance(address, reference);
-          return { account, assets: [assets] };
-        })
-      );
-
-      const balances: AccountBalances = {};
-      arr.forEach(({ account, assets }) => {
-        balances[account] = assets;
-      });
-      setBalances(balances);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsFetchingBalances(false);
-    }
   };
 
   const onSessionConnected = useCallback(
     async (_session: SessionTypes.Struct) => {
-      const allNamespaceAccounts = Object.values(_session.namespaces)
-        .map((namespace) => namespace.accounts)
-        .flat();
-      const allNamespaceChains = Object.keys(_session.namespaces);
+      const allNamespaceAccounts = _session.namespaces.reef.accounts;
 
       setSession(_session);
-      setChains(allNamespaceChains);
       setAccounts(allNamespaceAccounts);
-      await getAccountBalances(allNamespaceAccounts);
     },
     []
   );
@@ -145,13 +95,8 @@ export function ClientContextProvider({
         });
 
         // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
-        if (uri) {
-          // Create a flat array of all requested chains across namespaces.
-          const standaloneChains = Object.values(requiredNamespaces)
-            .map((namespace) => namespace.chains)
-            .flat() as string[];
-
-          web3Modal.openModal({ uri, standaloneChains });
+        if (uri) {          
+          web3Modal.openModal({ uri, standaloneChains: requiredNamespaces.reef.chains });
         }
 
         const session = await approval();
@@ -167,7 +112,7 @@ export function ClientContextProvider({
         web3Modal.closeModal();
       }
     },
-    [chains, client, onSessionConnected]
+    [client, onSessionConnected]
   );
 
   const disconnect = useCallback(async () => {
@@ -296,31 +241,23 @@ export function ClientContextProvider({
     () => ({
       pairings,
       isInitializing,
-      balances,
-      isFetchingBalances,
       accounts,
-      chains,
       relayerRegion,
       client,
       session,
       connect,
       disconnect,
-      setChains,
       setRelayerRegion,
     }),
     [
       pairings,
       isInitializing,
-      balances,
-      isFetchingBalances,
       accounts,
-      chains,
       relayerRegion,
       client,
       session,
       connect,
       disconnect,
-      setChains,
       setRelayerRegion,
     ]
   );

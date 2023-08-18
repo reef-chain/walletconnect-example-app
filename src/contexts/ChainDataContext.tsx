@@ -6,24 +6,14 @@ import {
   useState,
 } from "react";
 
-import { ChainsMap } from "../helpers";
-import { CHAINS } from "../helpers/config";
+import { ChainsMap, CHAINS } from "../helpers";
 
-/**
- * Types
- */
 interface IContext {
   chainData: ChainsMap;
 }
 
-/**
- * Context
- */
 export const ChainDataContext = createContext<IContext>({} as IContext);
 
-/**
- * Provider
- */
 export function ChainDataContextProvider({
   children,
 }: {
