@@ -42,11 +42,7 @@ const Home: NextPage = () => {
   } = useWalletConnectClient();
 
   // Use `JsonRpcContext` to provide us with relevant RPC methods and states.
-  const {
-    reefRpc,
-    isRpcRequestPending,
-    rpcResult,
-  } = useJsonRpc();
+  const { reefRpc, isRpcRequestPending, rpcResult } = useJsonRpc();
 
   // Initialize RPC providers.
   useEffect(() => {
@@ -80,9 +76,11 @@ const Home: NextPage = () => {
 
     await client.emit({
       topic: session?.topic || "",
-      event: { 
-        name: "accountsChanged", 
-        data: ["reef:7834781d38e4798d548e34ec947d19de:5aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"] 
+      event: {
+        name: "accountsChanged",
+        data: [
+          "reef:7834781d38e4798d548e34ec947d19de:5aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ],
       },
       chainId: "reef:7834781d38e4798d548e34ec947d19de",
     });
@@ -164,11 +162,7 @@ const Home: NextPage = () => {
   return (
     <SLayout>
       <Column maxWidth={1000} spanHeight>
-        <Header
-          disconnect={disconnect}
-          session={session}
-          emit={emit}
-        />
+        <Header disconnect={disconnect} session={session} emit={emit} />
         <SContent>{isInitializing ? "Loading..." : renderContent()}</SContent>
       </Column>
       <Modal show={!!modal} closeModal={closeModal}>

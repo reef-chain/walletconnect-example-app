@@ -5,12 +5,7 @@ import Button from "./Button";
 import Column from "./Column";
 import Loader from "./Loader";
 
-import {
-  AccountAction,
-  ellipseAddress,
-  ChainData,
-  CHAINS
-} from "../helpers";
+import { AccountAction, ellipseAddress, ChainData, CHAINS } from "../helpers";
 import { fonts } from "../styles";
 import { checkFlipperValue } from "../contexts/JsonRpcContext";
 
@@ -90,14 +85,7 @@ interface BlockchainProps {
 const Blockchain: FC<PropsWithChildren<BlockchainProps>> = (
   props: PropsWithChildren<BlockchainProps>
 ) => {
-  const {
-    fetching,
-    reference,
-    address,
-    onClick,
-    active,
-    actions,
-  } = props;
+  const { fetching, reference, address, onClick, active, actions } = props;
 
   const chain: ChainData = CHAINS[reference];
 

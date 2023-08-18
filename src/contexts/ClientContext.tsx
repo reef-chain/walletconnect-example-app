@@ -22,7 +22,6 @@ import {
   DEFAULT_RELAY_URL,
 } from "../helpers";
 
-
 interface IContext {
   client: Client | undefined;
   session: SessionTypes.Struct | undefined;
@@ -95,8 +94,11 @@ export function ClientContextProvider({
         });
 
         // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
-        if (uri) {          
-          web3Modal.openModal({ uri, standaloneChains: requiredNamespaces.reef.chains });
+        if (uri) {
+          web3Modal.openModal({
+            uri,
+            standaloneChains: requiredNamespaces.reef.chains,
+          });
         }
 
         const session = await approval();

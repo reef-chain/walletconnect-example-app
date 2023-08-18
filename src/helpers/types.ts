@@ -1,4 +1,4 @@
-import { Provider } from '@reef-defi/evm-provider';
+import { Provider } from "@reef-defi/evm-provider";
 
 export interface ChainsMap {
   [reference: string]: ChainData;

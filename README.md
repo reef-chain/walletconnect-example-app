@@ -34,12 +34,6 @@ Your `.env.local` now contains the following environment variables:
 yarn dev
 ```
 
-## Test
-
-```bash
-yarn test
-```
-
 ## Build
 
 ```bash
