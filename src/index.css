@@ -1,0 +1,63 @@
+body {
+  background-color: #5d3bad !important;
+  color: white;
+}
+
+.App {
+  text-align: center;
+  padding: 50px;
+}
+
+.App h1 {
+  font-size: 2rem;
+}
+
+button {
+  background-color: #a93185;
+  color: white;
+  border: white solid 1px;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: block;
+  margin: 10px auto;
+}
+
+button:hover {
+  background-color: #a931859b;
+}
+
+.account {
+  display: flex;
+  color: black;
+  background-color: #e9e8e8;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px;
+  max-width: 400px;
+  margin: 40px auto;
+}
+
+.account .content {
+  text-align: left;
+  flex: 1 1 auto;
+}
+
+.account .content .name {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.logo {
+  flex: 0 0 auto;
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  max-width: 50px;
+  max-height: 50px;
+}
